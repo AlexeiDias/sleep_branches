@@ -2,6 +2,8 @@
 
 import { getArchivedSleepLogs, getParentEmailByChildId } from "@/lib/firestore";
 import { sendReport } from "@/lib/sendReport";
+import { exportToCSV } from "@/lib/exportCsv";
+import { exportToPDF } from "@/lib/exportPdf";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
@@ -64,37 +66,55 @@ export default function ArchivedLogsPage() {
       )}
 
       {Object.entries(logs).map(([date, entries]) => (
-        <div key={date} className="mb-10 border rounded p-4 shadow">
-          <div className="flex justify-between items-center mb-2">
+        <div
+          key={date}
+          className="mb-10 border rounded p-4 shadow"
+          id={`log-table-${date}`}
+        >
+          <div className="flex flex-wrap justify-between items-center mb-2 gap-2">
             <h2 className="text-xl font-semibold">{date}</h2>
-            <button
-              onClick={() => handleSend(date, entries)}
-              className="bg-blue-600 text-white px-3 py-1 rounded text-sm"
-            >
-              ✉️ Send Report
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => handleSend(date, entries)}
+                className="bg-blue-500 text-white px-3 py-1 rounded text-sm"
+              >
+                ✉️ Send Report
+              </button>
+              <button
+                onClick={() => exportToCSV(`SleepLog-${date}.csv`, entries)}
+                className="bg-green-600 text-white px-3 py-1 rounded text-sm"
+              >
+                ⬇️ CSV
+              </button>
+              <button
+                onClick={() =>
+                  exportToPDF(`SleepLog-${date}.pdf`, `log-table-${date}`)
+                }
+                className="bg-red-600 text-white px-3 py-1 rounded text-sm"
+              >
+                ⬇️ PDF
+              </button>
+            </div>
           </div>
 
           <table className="w-full text-sm border">
-            <thead className="bg-gray-100">
-              <tr>
-                <th className="border px-2 py-1">Time</th>
-                <th className="border px-2 py-1">Type</th>
-                <th className="border px-2 py-1">Position</th>
-                <th className="border px-2 py-1">Mood</th>
+            <thead>
+              <tr className="bg-gray-100 text-left">
+                <th className="p-2 border">Time</th>
+                <th className="p-2 border">Type</th>
+                <th className="p-2 border">Position</th>
+                <th className="p-2 border">Mood</th>
               </tr>
             </thead>
             <tbody>
-              {entries.map((entry) => (
-                <tr key={entry.id}>
-                  <td className="border px-2 py-1">
-                    {entry.timestamp?.toDate
-                      ? format(entry.timestamp.toDate(), "hh:mm a")
-                      : "-"}
+              {entries.map((entry, idx) => (
+                <tr key={idx}>
+                  <td className="p-2 border">
+                    {format(entry.timestamp?.toDate?.(), "hh:mm a")}
                   </td>
-                  <td className="border px-2 py-1 capitalize">{entry.type}</td>
-                  <td className="border px-2 py-1">{entry.position}</td>
-                  <td className="border px-2 py-1">{entry.mood || "-"}</td>
+                  <td className="p-2 border">{entry.type}</td>
+                  <td className="p-2 border">{entry.position}</td>
+                  <td className="p-2 border">{entry.mood || "-"}</td>
                 </tr>
               ))}
             </tbody>
