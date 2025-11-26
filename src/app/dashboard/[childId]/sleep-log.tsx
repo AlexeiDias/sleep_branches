@@ -3,8 +3,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useParams } from "next/navigation";
 import useCountdown from "@/lib/useCountdown";
+import { addSleepLogEntry } from "@/lib/firestore";
+
 
 type LogEntry = {
   timestamp: string;
@@ -14,6 +16,8 @@ type LogEntry = {
 };
 
 export default function SleepLogPage() {
+  const params = useParams();
+  const childId = params.childId as string;
   const [log, setLog] = useState<LogEntry[]>([]);
   const [isSleeping, setIsSleeping] = useState(false);
   const [timerKey, setTimerKey] = useState(0); // Forces timer restart
@@ -29,51 +33,45 @@ export default function SleepLogPage() {
     return new Date().toLocaleTimeString();
   }
 
-  function handleStart() {
-    setIsSleeping(true);
-    setLog((prev) => [
-      ...prev,
-      {
-        timestamp: formatNow(),
-        type: "start",
-        position: prompt("Baby's initial position? (Back, Side, Tummy)") || "Back",
-      },
-    ]);
-    start();
-  }
+  const position = prompt("Baby's initial position? (Back, Side, Tummy)") || "Back";
 
-  function handleRestart() {
-    setTimerKey((prev) => prev + 1); // reset hook
-    reset();
-    start();
+setLog((prev) => [
+  ...prev,
+  { timestamp: formatNow(), type: "start", position },
+]);
 
-    setLog((prev) => [
-      ...prev,
-      {
-        timestamp: formatNow(),
-        type: "check",
-        position: prompt("Baby's position during check? (Back, Side, Tummy)") || "Back",
-      },
-    ]);
-  }
+addSleepLogEntry({
+  childId,
+  entry: { type: "start", position },
+});
 
-  function handleStop() {
-    setIsSleeping(false);
-    reset();
 
-    const position = prompt("Final baby position? (Back, Side, Tummy, Sitting, Standing)") || "Back";
-    const mood = prompt("Baby's mood? (Happy, Neutral, Crying)") || "Neutral";
+  const position = prompt("Baby's position during check?") || "Back";
 
-    setLog((prev) => [
-      ...prev,
-      {
-        timestamp: formatNow(),
-        type: "stop",
-        position,
-        mood,
-      },
-    ]);
-  }
+setLog((prev) => [
+  ...prev,
+  { timestamp: formatNow(), type: "check", position },
+]);
+
+addSleepLogEntry({
+  childId,
+  entry: { type: "check", position },
+});
+
+
+  const position = prompt("Final baby position?") || "Back";
+const mood = prompt("Baby’s mood?") || "Neutral";
+
+setLog((prev) => [
+  ...prev,
+  { timestamp: formatNow(), type: "stop", position, mood },
+]);
+
+addSleepLogEntry({
+  childId,
+  entry: { type: "stop", position, mood },
+});
+
 
   function handleCheckPrompt() {
     alert("🔔 Time to check on the baby!");

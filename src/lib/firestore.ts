@@ -10,6 +10,7 @@ import {
   query,
   where,
   DocumentData,
+  orderBy,
 } from "firebase/firestore";
 
 /**
@@ -65,4 +66,52 @@ export async function getChildrenByDaycare(daycareId: string): Promise<DocumentD
   }
 
   return allChildren;
+}
+
+/**
+ * Fetch all archived sleep logs for a child
+ * Grouped by sleepLogs/{date}/entries
+ */
+export async function getArchivedSleepLogs(childId: string) {
+  const logsRef = collection(db, "children", childId, "sleepLogs");
+  const logsSnapshot = await getDocs(logsRef);
+
+  const allLogs: Record<string, any[]> = {};
+
+  for (const dayDoc of logsSnapshot.docs) {
+    const date = dayDoc.id; // YYYY-MM-DD
+    const entriesRef = collection(logsRef, date, "entries");
+    const entriesSnap = await getDocs(query(entriesRef, orderBy("timestamp")));
+
+    allLogs[date] = entriesSnap.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+  }
+
+  return allLogs;
+}
+
+/**
+ * Fetch parent email (preferably mother) from a child’s ID
+ */
+export async function getParentEmailByChildId(childId: string): Promise<string | null> {
+  const childRef = doc(db, "children", childId);
+  const childSnap = await getDoc(childRef);
+
+  if (!childSnap.exists()) return null;
+
+  const childData = childSnap.data();
+  const familyId = childData.familyId;
+
+  if (!familyId) return null;
+
+  const familyRef = doc(db, "families", familyId);
+  const familySnap = await getDoc(familyRef);
+
+  if (!familySnap.exists()) return null;
+
+  const familyData = familySnap.data();
+
+  return familyData?.mother?.email || familyData?.father?.email || null;
 }
