@@ -3,12 +3,45 @@
 import { db } from "./firebase";
 import {
   collection,
+  doc,
+  addDoc,
+  serverTimestamp,
   getDocs,
   query,
   where,
   DocumentData,
 } from "firebase/firestore";
 
+/**
+ * Add a sleep log entry for a child on the current day
+ */
+export async function addSleepLogEntry({
+  childId,
+  entry,
+}: {
+  childId: string;
+  entry: {
+    type: "start" | "check" | "stop";
+    position: string;
+    mood?: string;
+  };
+}) {
+  const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+
+  const entriesRef = collection(
+    db,
+    "children",
+    childId,
+    "sleepLogs",
+    today,
+    "entries"
+  );
+
+  await addDoc(entriesRef, {
+    ...entry,
+    timestamp: serverTimestamp(),
+  });
+}
 /**
  * Get all children associated with a daycare
  */
