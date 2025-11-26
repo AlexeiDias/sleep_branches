@@ -1,4 +1,8 @@
-export async function sendReport({
+// src/lib/sendReport.ts
+
+import nodemailer from "nodemailer";
+
+export async function sendEmailReport({
   to,
   subject,
   html,
@@ -7,21 +11,20 @@ export async function sendReport({
   subject: string;
   html: string;
 }) {
-  try {
-    const res = await fetch("/api/send-report", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ to, subject, html }),
-    });
+  const transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+  });
 
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error || "Failed to send report");
-    }
+  const info = await transporter.sendMail({
+    from: `"Sleep Log System" <${process.env.EMAIL_USER}>`,
+    to,
+    subject,
+    html,
+  });
 
-    return await res.json();
-  } catch (err: any) {
-    console.error("Email send error:", err.message);
-    throw err;
-  }
+  return info;
 }
