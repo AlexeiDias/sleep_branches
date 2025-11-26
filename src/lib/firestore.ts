@@ -115,3 +115,32 @@ export async function getParentEmailByChildId(childId: string): Promise<string |
 
   return familyData?.mother?.email || familyData?.father?.email || null;
 }
+
+export async function getAllChildrenWithLogs() {
+  const childrenSnap = await getDocs(collection(db, "children"));
+  const allLogs = [];
+
+  for (const doc of childrenSnap.docs) {
+    const childData = doc.data();
+    const childId = doc.id;
+    const sleepLogsSnap = await getDocs(
+      collection(db, `children/${childId}/sleepLogs`)
+    );
+
+    sleepLogsSnap.forEach((logDoc) => {
+      const log = logDoc.data();
+      allLogs.push({
+        id: logDoc.id,
+        timestamp: log.timestamp.toDate(),
+        type: log.type,
+        position: log.position,
+        mood: log.mood || null,
+        childName: childData.name,
+        childId,
+      });
+    });
+  }
+
+  // Sort by timestamp descending
+  return allLogs.sort((a, b) => b.timestamp - a.timestamp);
+}
