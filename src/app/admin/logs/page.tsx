@@ -37,47 +37,50 @@ export default function AdminLogPage() {
     <div className="max-w-6xl mx-auto p-6">
       <h1 className="text-2xl font-bold mb-4">🧑‍💼 Admin Sleep Logs Overview</h1>
 
-      <div className="flex items-center gap-4 mb-4">
-        <label htmlFor="childFilter">Filter by Child:</label>
-        <select
-          id="childFilter"
-          value={childFilter}
-          onChange={(e) => setChildFilter(e.target.value)}
-          className="border rounded p-2"
-        >
-          <option value="">All Children</option>
-          {uniqueChildren.map((name) => (
-            <option key={name} value={name}>
-              {name}
-            </option>
-          ))}
-        </select>
-      </div>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 mb-4">
+  <label htmlFor="childFilter" className="text-sm">Filter by Child:</label>
+  <select
+    id="childFilter"
+    value={childFilter}
+    onChange={(e) => setChildFilter(e.target.value)}
+    className="border rounded p-2 w-full sm:w-auto"
+  >
+    <option value="">All Children</option>
+    {children.map((child) => (
+      <option key={child.id} value={child.id}>
+        {child.name}
+      </option>
+    ))}
+  </select>
+</div>
 
-      <div className="overflow-auto">
-        <table className="w-full text-sm border">
-          <thead>
-            <tr className="bg-gray-100 text-left">
-              <th className="p-2 border">Child</th>
-              <th className="p-2 border">Time</th>
-              <th className="p-2 border">Type</th>
-              <th className="p-2 border">Position</th>
-              <th className="p-2 border">Mood</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredLogs.map((log) => (
-              <tr key={log.id}>
-                <td className="p-2 border">{log.childName}</td>
-                <td className="p-2 border">{format(log.timestamp, "Pp")}</td>
-                <td className="p-2 border">{log.type}</td>
-                <td className="p-2 border">{log.position}</td>
-                <td className="p-2 border">{log.mood || "-"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <div className="overflow-x-auto">
+  <table className="min-w-[600px] w-full text-sm border">
+    <thead className="bg-gray-100">
+      <tr>
+        <th className="px-4 py-2 border">Child</th>
+        <th className="px-4 py-2 border">Date</th>
+        <th className="px-4 py-2 border">Time</th>
+        <th className="px-4 py-2 border">Type</th>
+        <th className="px-4 py-2 border">Mood</th>
+        <th className="px-4 py-2 border">Position</th>
+      </tr>
+    </thead>
+    <tbody>
+      {filteredLogs.map((log, index) => (
+        <tr key={index}>
+          <td className="px-4 py-2 border">{log.childName}</td>
+          <td className="px-4 py-2 border">{log.date}</td>
+          <td className="px-4 py-2 border">{log.time}</td>
+          <td className="px-4 py-2 border">{log.type}</td>
+          <td className="px-4 py-2 border">{log.mood}</td>
+          <td className="px-4 py-2 border">{log.position}</td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+</div>
+
     </div>
   );
 }
