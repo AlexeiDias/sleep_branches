@@ -1,21 +1,83 @@
-//src/lib/firestore.ts
-
+// src/lib/firestore.ts
 import { db } from "./firebase";
 import {
   collection,
   doc,
   addDoc,
-  serverTimestamp,
+  setDoc,
+  getDoc,
   getDocs,
+  serverTimestamp,
   query,
   where,
-  DocumentData,
   orderBy,
+  DocumentData,
 } from "firebase/firestore";
 
-/**
- * Add a sleep log entry for a child on the current day
- */
+/* ======================================================
+   1) SAVE FAMILY (from /register/family)
+   Creates a family doc under "families" and optional children
+   ====================================================== */
+export async function saveFamily(daycareId: string, familyData: any) {
+  try {
+    // Create family document
+    const familyRef = await addDoc(collection(db, "families"), {
+      daycareId,
+      mother: familyData.mother,
+      father: familyData.father,
+      createdAt: serverTimestamp(),
+    });
+
+    // Save each child under: families/{familyId}/children/{childId}
+    for (const child of familyData.children) {
+      const age = calculateAge(child.dob); // Compute age from dob
+
+      await addDoc(collection(familyRef, "children"), {
+        name: child.name || "",
+        dob: child.dob || "",
+        age, // safely computed, never undefined
+        createdAt: serverTimestamp(),
+      });
+    }
+
+    return familyRef.id;
+  } catch (error) {
+    console.error("Error saving family:", error);
+    throw error;
+  }
+}
+
+function calculateAge(dobString: string): number | null {
+  if (!dobString) return null;
+  const dob = new Date(dobString);
+  if (isNaN(dob.getTime())) return null;
+  const ageMs = Date.now() - dob.getTime();
+  const age = Math.floor(ageMs / (1000 * 60 * 60 * 24 * 365.25));
+  return age;
+}
+
+/* ======================================================
+   2) SAVE CHILD (optional helper if needed later)
+   ====================================================== */
+export async function saveChild(familyId: string, childData: any) {
+  try {
+    const childRef = await addDoc(
+      collection(db, "families", familyId, "children"),
+      {
+        ...childData,
+        createdAt: serverTimestamp(),
+      }
+    );
+    return childRef.id;
+  } catch (error) {
+    console.error("Error saving child:", error);
+    throw error;
+  }
+}
+
+/* ======================================================
+   3) ADD A SLEEP LOG ENTRY
+   ====================================================== */
 export async function addSleepLogEntry({
   childId,
   entry,
@@ -43,10 +105,14 @@ export async function addSleepLogEntry({
     timestamp: serverTimestamp(),
   });
 }
-/**
- * Get all children associated with a daycare
- */
-export async function getChildrenByDaycare(daycareId: string): Promise<DocumentData[]> {
+
+/* ======================================================
+   4) GET CHILDREN FOR DASHBOARD (under a daycare)
+   families/{familyId} → children/{childId}
+   ====================================================== */
+export async function getChildrenByDaycare(
+  daycareId: string
+): Promise<DocumentData[]> {
   const familiesRef = collection(db, "families");
   const q = query(familiesRef, where("daycareId", "==", daycareId));
   const snapshot = await getDocs(q);
@@ -55,12 +121,14 @@ export async function getChildrenByDaycare(daycareId: string): Promise<DocumentD
 
   for (const familyDoc of snapshot.docs) {
     const familyData = familyDoc.data();
+
     const childrenSnap = await getDocs(collection(familyDoc.ref, "children"));
     childrenSnap.forEach((childDoc) => {
       allChildren.push({
         ...childDoc.data(),
         id: childDoc.id,
-        parentEmail: familyData.mother?.email || "",
+        familyId: familyDoc.id,
+        parentEmail: familyData.mother?.email || familyData.father?.email || "",
       });
     });
   }
@@ -68,10 +136,10 @@ export async function getChildrenByDaycare(daycareId: string): Promise<DocumentD
   return allChildren;
 }
 
-/**
- * Fetch all archived sleep logs for a child
- * Grouped by sleepLogs/{date}/entries
- */
+/* ======================================================
+   5) GET ARCHIVED SLEEP LOGS FOR CHILD
+   sleepLogs/{YYYY-MM-DD}/entries/*
+   ====================================================== */
 export async function getArchivedSleepLogs(childId: string) {
   const logsRef = collection(db, "children", childId, "sleepLogs");
   const logsSnapshot = await getDocs(logsRef);
@@ -79,7 +147,7 @@ export async function getArchivedSleepLogs(childId: string) {
   const allLogs: Record<string, any[]> = {};
 
   for (const dayDoc of logsSnapshot.docs) {
-    const date = dayDoc.id; // YYYY-MM-DD
+    const date = dayDoc.id;
     const entriesRef = collection(logsRef, date, "entries");
     const entriesSnap = await getDocs(query(entriesRef, orderBy("timestamp")));
 
@@ -92,10 +160,12 @@ export async function getArchivedSleepLogs(childId: string) {
   return allLogs;
 }
 
-/**
- * Fetch parent email (preferably mother) from a child’s ID
- */
-export async function getParentEmailByChildId(childId: string): Promise<string | null> {
+/* ======================================================
+   6) FETCH PARENT EMAIL FROM CHILD ID
+   ====================================================== */
+export async function getParentEmailByChildId(
+  childId: string
+): Promise<string | null> {
   const childRef = doc(db, "children", childId);
   const childSnap = await getDoc(childRef);
 
@@ -116,13 +186,17 @@ export async function getParentEmailByChildId(childId: string): Promise<string |
   return familyData?.mother?.email || familyData?.father?.email || null;
 }
 
+/* ======================================================
+   7) ADMIN: GET ALL CHILDREN WITH LATEST LOGS
+   ====================================================== */
 export async function getAllChildrenWithLogs() {
   const childrenSnap = await getDocs(collection(db, "children"));
   const allLogs = [];
 
-  for (const doc of childrenSnap.docs) {
-    const childData = doc.data();
-    const childId = doc.id;
+  for (const docSnap of childrenSnap.docs) {
+    const childData = docSnap.data();
+    const childId = docSnap.id;
+
     const sleepLogsSnap = await getDocs(
       collection(db, `children/${childId}/sleepLogs`)
     );
@@ -131,7 +205,7 @@ export async function getAllChildrenWithLogs() {
       const log = logDoc.data();
       allLogs.push({
         id: logDoc.id,
-        timestamp: log.timestamp.toDate(),
+        timestamp: log.timestamp?.toDate() || new Date(0),
         type: log.type,
         position: log.position,
         mood: log.mood || null,
@@ -141,6 +215,5 @@ export async function getAllChildrenWithLogs() {
     });
   }
 
-  // Sort by timestamp descending
   return allLogs.sort((a, b) => b.timestamp - a.timestamp);
 }

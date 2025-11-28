@@ -1,44 +1,32 @@
-//src/components/ChildCard.tsx
+import React from "react";
+import { getAge } from "@/lib/utils"; // Make sure this exists or replace with your own logic
+import { format } from "date-fns";
 
-import Link from "next/link";
-
-type Child = {
-  id: string;
-  name: string;
-  dob: string;
-  parentEmail: string;
-};
-
-export default function ChildCard({ child }: { child: Child }) {
-  return (
-    <div className="border p-4 rounded shadow-sm bg-white flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-      <div>
-        <p className="font-bold">{child.name}</p>
-        <p className="text-sm text-gray-600">DOB: {formatDate(child.dob)}</p>
-        <p className="text-sm text-gray-600">Age: {getAge(child.dob)}</p>
-        <p className="text-sm text-gray-600">Parent Email: {child.parentEmail}</p>
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        <Link href={`/dashboard/${child.id}/sleep-log`} className="btn-primary">Sleep Log</Link>
-        <Link href={`/dashboard/${child.id}/archived-logs`} className="btn-secondary">Archived</Link>
-      </div>
-    </div>
-  );
+// Helper to format the date
+function formatDate(dateString: string) {
+  const date = new Date(dateString);
+  return format(date, "MMM dd, yyyy");
 }
 
+type Child = {
+  name: string;
+  dob: string;
+  parentEmail?: string;
+};
 
-function getAgeFromDOB(dob: string): string {
-  const birthDate = new Date(dob);
-  const today = new Date();
+type ChildCardProps = {
+  child: Child;
+};
 
-  let years = today.getFullYear() - birthDate.getFullYear();
-  let months = today.getMonth() - birthDate.getMonth();
-
-  if (months < 0 || (months === 0 && today.getDate() < birthDate.getDate())) {
-    years--;
-    months += 12;
-  }
-
-  return `${years} yrs ${months} mo`;
+export default function ChildCard({ child }: ChildCardProps) {
+  return (
+    <div className="border p-4 rounded shadow-sm bg-white">
+      <p className="font-bold text-lg">{child.name}</p>
+      <p className="text-sm text-gray-600">DOB: {formatDate(child.dob)}</p>
+      <p className="text-sm text-gray-600">Age: {getAge(child.dob)}</p>
+      {child.parentEmail && (
+        <p className="text-sm text-gray-600">Parent Email: {child.parentEmail}</p>
+      )}
+    </div>
+  );
 }

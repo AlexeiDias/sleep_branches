@@ -1,6 +1,7 @@
 //src/components/AuthForm.tsx
 
 "use client";
+
 import { useState } from "react";
 
 export default function AuthForm({ onSubmit, title }: { onSubmit: (email: string, password: string) => void, title: string }) {

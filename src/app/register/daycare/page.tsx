@@ -1,5 +1,7 @@
 "use client";
 import { useState } from "react";
+import { addDoc, collection, doc, updateDoc } from "firebase/firestore";
+import { db, auth } from "@/lib/firebase";
 
 export default function DaycareRegistrationPage() {
   const [form, setForm] = useState({
@@ -15,9 +17,30 @@ export default function DaycareRegistrationPage() {
   };
 
   const handleSubmit = async () => {
-    // TODO: Save to Firestore
-    console.log("Daycare form submitted:", form);
-    window.location.href = "/register/family"; // Redirect to next step
+    try {
+      const user = auth.currentUser;
+      if (!user) throw new Error("User not logged in");
+
+      // 1️⃣ Save daycare info to Firestore
+      const daycareRef = await addDoc(collection(db, "daycares"), {
+        ...form,
+        createdBy: user.uid,
+        createdAt: new Date(),
+      });
+
+      // 2️⃣ Update user's document with daycareId
+      const userRef = doc(db, "users", user.uid);
+      await updateDoc(userRef, {
+        daycareId: daycareRef.id,
+      });
+
+      // 3️⃣ Redirect to next step
+      console.log("✅ Daycare created and linked to user:", daycareRef.id);
+      window.location.href = "/register/family";
+    } catch (err) {
+      console.error("❌ Error saving daycare:", err);
+      alert("Failed to register daycare.");
+    }
   };
 
   return (
@@ -35,7 +58,9 @@ export default function DaycareRegistrationPage() {
             required
           />
         ))}
-        <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded w-full">Next: Add Families</button>
+        <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded w-full">
+          Next: Add Families
+        </button>
       </form>
     </div>
   );
