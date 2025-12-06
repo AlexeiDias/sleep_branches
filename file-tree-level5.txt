@@ -1,0 +1,42 @@
+src
+├── .DS_Store
+├── app
+│   ├── .DS_Store
+│   ├── admin
+│   │   └── logs
+│   │       └── page.tsx
+│   ├── api
+│   │   └── send-report
+│   │       └── route.ts
+│   ├── dashboard
+│   │   ├── .DS_Store
+│   │   ├── [childId]
+│   │   │   ├── archived-logs.tsx
+│   │   │   └── sleep-log.tsx
+│   │   └── page.tsx
+│   ├── favicon.ico
+│   ├── globals.css
+│   ├── layout.tsx
+│   ├── login
+│   │   └── page.tsx
+│   ├── page.tsx
+│   └── register
+│       ├── daycare
+│       │   └── page.tsx
+│       ├── family
+│       │   └── page.tsx
+│       └── page.tsx
+├── components
+│   ├── AuthForm.tsx
+│   ├── ChildCard.tsx
+│   └── ChildForm.tsx
+└── lib
+    ├── auth.ts
+    ├── checkUserOnboarding.ts
+    ├── firebase.ts
+    ├── firestore.ts
+    ├── sendReport.ts
+    ├── useCountdown.ts
+    └── utils.ts
+
+14 directories, 26 files

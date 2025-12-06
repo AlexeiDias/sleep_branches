@@ -1,10 +1,22 @@
-export function getAge(dob: string) {
+export function getAge(dob: string): string {
   const birthDate = new Date(dob);
-  const today = new Date();
-  let age = today.getFullYear() - birthDate.getFullYear();
-  const m = today.getMonth() - birthDate.getMonth();
-  if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-    age--;
+  const now = new Date();
+
+  let years = now.getFullYear() - birthDate.getFullYear();
+  let months = now.getMonth() - birthDate.getMonth();
+
+  if (months < 0) {
+    years--;
+    months += 12;
   }
-  return age;
+
+  if (years === 0) {
+    return `Age: ${months} month${months === 1 ? "" : "s"}`;
+  }
+
+  if (months === 0) {
+    return `Age: ${years} year${years === 1 ? "" : "s"}`;
+  }
+
+  return `Age: ${years} year${years === 1 ? "" : "s"} and ${months} month${months === 1 ? "" : "s"}`;
 }

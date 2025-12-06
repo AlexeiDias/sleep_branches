@@ -1,6 +1,4 @@
-//src/lib/useCountdown.ts
-
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 
 type CountdownProps = {
   minutes: number;
@@ -15,36 +13,64 @@ export default function useCountdown({
   autoStart = false,
   onComplete,
 }: CountdownProps) {
-  const [time, setTime] = useState(initialMin * 60 + initialSec);
+  const initialTime = initialMin * 60 + initialSec;
+  const [time, setTime] = useState(initialTime);
   const [isRunning, setIsRunning] = useState(autoStart);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
+  const clearTimer = () => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+  };
+
+  const tick = useCallback(() => {
+    setTime((prev) => {
+      if (prev <= 1) {
+        clearTimer();
+        setIsRunning(false);
+        onComplete?.();
+        return 0;
+      }
+      return prev - 1;
+    });
+  }, [onComplete]);
+
   useEffect(() => {
     if (isRunning) {
-      intervalRef.current = setInterval(() => {
-        setTime((prev) => {
-          if (prev === 1) {
-            clearInterval(intervalRef.current!);
-            setIsRunning(false);
-            onComplete?.();
-          }
-          return prev - 1;
-        });
-      }, 1000);
+      clearTimer(); // Prevent multiple intervals
+      intervalRef.current = setInterval(tick, 1000);
+    } else {
+      clearTimer();
     }
 
-    return () => clearInterval(intervalRef.current!);
-  }, [isRunning]);
+    return () => clearTimer();
+  }, [isRunning, tick]);
+
+  const start = () => {
+    setIsRunning(true);
+  };
+
+  const reset = () => {
+    clearTimer();
+    setTime(initialTime);
+    setIsRunning(false);
+  };
+
+  const restart = () => {
+    reset();
+    setTimeout(() => {
+      start();
+    }, 50); // Small delay ensures React state updates cleanly
+  };
 
   return {
     minutes: Math.floor(time / 60),
     seconds: time % 60,
     isRunning,
-    start: () => setIsRunning(true),
-    reset: () => {
-      clearInterval(intervalRef.current!);
-      setTime(initialMin * 60 + initialSec);
-      setIsRunning(false);
-    },
+    start,
+    reset,
+    restart,
   };
 }
