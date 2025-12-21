@@ -1,5 +1,3 @@
-// src/components/SleepController.tsx
-
 "use client";
 
 import { useState } from "react";
@@ -7,7 +5,7 @@ import useCountdown from "@/lib/useCountdown";
 import SleepCheckModal from "@/components/SleepCheckModal";
 import SleepStopModal from "@/components/SleepStopModal";
 import SleepLogTable from "@/components/SleepLogTable";
-import { addSleepLogEntry } from "@/lib/firestore"; // ✅ import Firestore helper
+import { addSleepLogEntry } from "@/lib/firestore";
 
 type SleepEntry = {
   timestamp: string;
@@ -26,18 +24,12 @@ export default function SleepController({ childId }: Props) {
   const [showStopModal, setShowStopModal] = useState(false);
   const [entries, setEntries] = useState<SleepEntry[]>([]);
 
-  const {
-    minutes,
-    seconds,
-    isRunning,
-    start,
-    reset,
-  } = useCountdown({
-    minutes: 12, // ⏱️ Set to 12 minutes
+  const { minutes, seconds, start, reset } = useCountdown({
+    minutes: 12,
     seconds: 0,
     autoStart: false,
     onComplete: () => {
-      setShowCheckModal(true); // Timer done = prompt sleep check
+      setShowCheckModal(true);
     },
   });
 
@@ -45,66 +37,97 @@ export default function SleepController({ childId }: Props) {
     setEntries((prev) => [...prev, entry]);
   };
 
-  const handleStart = async () => {
-    const now = new Date().toISOString();
-    const entry = { timestamp: now, action: "Start", position: "Back" };
-    logEntry(entry);
-
-    // ✅ Save to Firestore
-    await addSleepLogEntry({
-      childId,
-      entry: { type: "start", position: "Back" },
-    });
-
-    setIsSleeping(true);
-    start();
+  /**
+   * 🟢 START SLEEPING
+   * Ask for position first (no auto logging)
+   */
+  const handleStart = () => {
+    setShowCheckModal(true);
   };
 
+  /**
+   * 🔁 RESTART (sleep check)
+   */
   const handleRestart = () => {
     reset();
     start();
-    setShowCheckModal(true); // Show modal manually on Restart
+    setShowCheckModal(true);
   };
 
+  /**
+   * 🛑 STOP
+   */
   const handleStop = () => {
     reset();
-    setShowStopModal(true); // Open mood + position modal
+    setShowStopModal(true);
   };
 
+  /**
+   * ✅ SUBMIT START or CHECK
+   */
   const handleCheckSubmit = async (position: string) => {
     const now = new Date().toISOString();
-    const entry = { timestamp: now, action: "Check", position };
+
+    const action: "Start" | "Check" = isSleeping ? "Check" : "Start";
+    const firestoreType = isSleeping ? "check" : "start";
+
+    const entry: SleepEntry = {
+      timestamp: now,
+      action,
+      position,
+    };
+
+    // Live table update
     logEntry(entry);
 
-    // ✅ Save to Firestore
+    // Firestore write
     await addSleepLogEntry({
       childId,
-      entry: { type: "check", position },
+      entry: { type: firestoreType, position },
     });
+
+    // Start countdown only on first Start
+    if (!isSleeping) {
+      setIsSleeping(true);
+      start();
+    }
+
+    setShowCheckModal(false);
   };
 
+  /**
+   * ✅ SUBMIT STOP
+   */
   const handleStopSubmit = async (data: { position: string; mood: string }) => {
     const now = new Date().toISOString();
-    const entry = {
+
+    const entry: SleepEntry = {
       timestamp: now,
       action: "Stop",
       position: data.position,
       mood: data.mood,
     };
+
+    // Live table update
     logEntry(entry);
 
-    // ✅ Save to Firestore
+    // Firestore write
     await addSleepLogEntry({
       childId,
-      entry: { type: "stop", position: data.position, mood: data.mood },
+      entry: {
+        type: "stop",
+        position: data.position,
+        mood: data.mood,
+      },
     });
 
     setIsSleeping(false);
+    setShowStopModal(false);
   };
 
   return (
     <div className="space-y-2">
-      {/* Countdown label */}
+      {/* Countdown */}
       {isSleeping && (
         <p className="text-sm text-blue-600">
           Next check-in: {minutes}:{seconds.toString().padStart(2, "0")}
@@ -151,7 +174,7 @@ export default function SleepController({ childId }: Props) {
         onSubmit={handleStopSubmit}
       />
 
-      {/* Log Table */}
+      {/* Live Log Table */}
       {entries.length > 0 && <SleepLogTable entries={entries} />}
     </div>
   );
