@@ -7,6 +7,7 @@ import useCountdown from "@/lib/useCountdown";
 import SleepCheckModal from "@/components/SleepCheckModal";
 import SleepStopModal from "@/components/SleepStopModal";
 import SleepLogTable from "@/components/SleepLogTable";
+import { addSleepLogEntry } from "@/lib/firestore"; // ✅ import Firestore helper
 
 type SleepEntry = {
   timestamp: string;
@@ -44,9 +45,17 @@ export default function SleepController({ childId }: Props) {
     setEntries((prev) => [...prev, entry]);
   };
 
-  const handleStart = () => {
+  const handleStart = async () => {
     const now = new Date().toISOString();
-    logEntry({ timestamp: now, action: "Start", position: "Back" });
+    const entry = { timestamp: now, action: "Start", position: "Back" };
+    logEntry(entry);
+
+    // ✅ Save to Firestore
+    await addSleepLogEntry({
+      childId,
+      entry: { type: "start", position: "Back" },
+    });
+
     setIsSleeping(true);
     start();
   };
@@ -62,19 +71,34 @@ export default function SleepController({ childId }: Props) {
     setShowStopModal(true); // Open mood + position modal
   };
 
-  const handleCheckSubmit = (position: string) => {
+  const handleCheckSubmit = async (position: string) => {
     const now = new Date().toISOString();
-    logEntry({ timestamp: now, action: "Check", position });
+    const entry = { timestamp: now, action: "Check", position };
+    logEntry(entry);
+
+    // ✅ Save to Firestore
+    await addSleepLogEntry({
+      childId,
+      entry: { type: "check", position },
+    });
   };
 
-  const handleStopSubmit = (data: { position: string; mood: string }) => {
+  const handleStopSubmit = async (data: { position: string; mood: string }) => {
     const now = new Date().toISOString();
-    logEntry({
+    const entry = {
       timestamp: now,
       action: "Stop",
       position: data.position,
       mood: data.mood,
+    };
+    logEntry(entry);
+
+    // ✅ Save to Firestore
+    await addSleepLogEntry({
+      childId,
+      entry: { type: "stop", position: data.position, mood: data.mood },
     });
+
     setIsSleeping(false);
   };
 
